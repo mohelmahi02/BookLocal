@@ -40,3 +40,15 @@ class BusinessHours(Base):
     day_of_week = Column(Integer, nullable=False)  # 0 = Monday, 6 = Sunday
     opening_time = Column(String, nullable=False)  # "09:00"
     closing_time = Column(String, nullable=False)  # "17:00"
+
+class Booking(Base):
+    __tablename__ = "bookings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    business_id = Column(Integer, ForeignKey("businesses.id"), nullable=False)
+    service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
+    end_time = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, default="confirmed")  # confirmed, cancelled, completed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
