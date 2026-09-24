@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float
 from sqlalchemy.sql import func
 from database import Base
 
@@ -21,3 +21,22 @@ class Business(Base):
     description = Column(String)
     location = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Service(Base):
+    __tablename__ = "services"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.id"), nullable=False)
+    name = Column(String, nullable=False)
+    price = Column(Float, nullable=False)
+    duration_minutes = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class BusinessHours(Base):
+    __tablename__ = "business_hours"
+
+    id = Column(Integer, primary_key=True, index=True)
+    business_id = Column(Integer, ForeignKey("businesses.id"), nullable=False)
+    day_of_week = Column(Integer, nullable=False)  # 0 = Monday, 6 = Sunday
+    opening_time = Column(String, nullable=False)  # "09:00"
+    closing_time = Column(String, nullable=False)  # "17:00"
