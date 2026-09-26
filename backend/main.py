@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+from auth import hash_password, verify_password, create_access_token, get_current_user
 from fastapi import FastAPI
 
 app = FastAPI(title="BookLocal API")
@@ -63,14 +64,13 @@ from pydantic import BaseModel
 
 
 class BookingCreate(BaseModel):
-    user_id: int
     business_id: int
     service_id: int
     start_time: datetime
 
 
 @app.post("/bookings")
-def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
+def create_booking(payload: BookingCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     service = db.query(Service).filter(
         Service.id == payload.service_id,
         Service.business_id == payload.business_id,
@@ -110,7 +110,7 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail="This slot is no longer available")
 
     new_booking = Booking(
-        user_id=payload.user_id,
+        user_id=current_user.id,
         business_id=payload.business_id,
         service_id=payload.service_id,
         start_time=start_time,
@@ -128,7 +128,6 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
         "status": new_booking.status,
     }
 
-from auth import hash_password, verify_password, create_access_token
 from models import User
 
 
