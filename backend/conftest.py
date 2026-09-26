@@ -34,3 +34,48 @@ def client(db_session):
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def seeded_business(db_session):
+    from models import User, Business, Service, BusinessHours
+    from auth import hash_password
+
+    owner = User(name="Business Owner", email="owner@test.com",
+                 hashed_password=hash_password("ownerpass123"), role="business")
+    db_session.add(owner)
+    db_session.commit()
+    db_session.refresh(owner)
+
+    business = Business(owner_id=owner.id, name="Test Barbershop",
+                         description="Test", location="Castlebar")
+    db_session.add(business)
+    db_session.commit()
+    db_session.refresh(business)
+
+    service = Service(business_id=business.id, name="Haircut",
+                       price=20.00, duration_minutes=30)
+    db_session.add(service)
+    db_session.commit()
+    db_session.refresh(service)
+
+    hours = BusinessHours(business_id=business.id, day_of_week=5,
+                           opening_time="09:00", closing_time="17:00")
+    db_session.add(hours)
+    db_session.commit()
+
+    return {"business": business, "service": service}
+
+
+@pytest.fixture
+def auth_token(client):
+    client.post("/register", json={
+        "name": "Booking Customer",
+        "email": "bookingcustomer@test.com",
+        "password": "custpass123",
+    })
+    response = client.post("/login", json={
+        "email": "bookingcustomer@test.com",
+        "password": "custpass123",
+    })
+    return response.json()["access_token"]
