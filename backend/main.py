@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from database import get_db
-from models import BusinessHours, Booking, Service
+from models import BusinessHours, Booking, Service, User
 from booking_logic import get_available_slots
 
 
@@ -128,7 +128,6 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db), curren
         "status": new_booking.status,
     }
 
-from models import User
 
 
 class UserRegister(BaseModel):
