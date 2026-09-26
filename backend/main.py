@@ -127,3 +127,48 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
         "end_time": new_booking.end_time.isoformat(),
         "status": new_booking.status,
     }
+
+from auth import hash_password, verify_password, create_access_token
+from models import User
+
+
+class UserRegister(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "customer"
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/register")
+def register(payload: UserRegister, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.email == payload.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    new_user = User(
+        name=payload.name,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        role=payload.role,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    token = create_access_token({"sub": str(new_user.id)})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.post("/login")
+def login(payload: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+    token = create_access_token({"sub": str(user.id)})
+    return {"access_token": token, "token_type": "bearer"}
