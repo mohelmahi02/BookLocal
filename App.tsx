@@ -18,7 +18,7 @@ export default function App() {
   const [password, setPassword] = useState('securepass123');
   const [loggedIn, setLoggedIn] = useState(false);
   const [token, setToken] = useState('');
-  const [date, setDate] = useState('2026-09-26');
+  const [date, setDate] = useState('2026-09-26'); // Saturday, matches seeded business hours
   const [slots, setSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
@@ -85,7 +85,7 @@ export default function App() {
         return;
       }
       Alert.alert('Booked!', `Confirmed for ${time} on ${date}`);
-      fetchSlots();
+      fetchSlots(); // refresh so the booked slot disappears
     } catch (error) {
       Alert.alert('Error', 'Could not reach the server');
       console.error(error);
@@ -99,7 +99,6 @@ export default function App() {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#999999"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -107,7 +106,6 @@ export default function App() {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#999999"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -125,7 +123,6 @@ export default function App() {
       <TextInput
         style={styles.input}
         placeholder="Date (YYYY-MM-DD)"
-        placeholderTextColor="#999999"
         value={date}
         onChangeText={setDate}
       />
@@ -151,19 +148,17 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 60, backgroundColor: '#ffffff' },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', color: '#000000' },
-  subtitle: { fontSize: 16, textAlign: 'center', color: '#555555', marginBottom: 16 },
+  container: { flex: 1, padding: 24, paddingTop: 60 },
+  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center' },
+  subtitle: { fontSize: 16, textAlign: 'center', color: '#555', marginBottom: 16 },
   input: {
     borderWidth: 1,
-    borderColor: '#cccccc',
+    borderColor: '#ccc',
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    color: '#000000',
-    backgroundColor: '#ffffff',
   },
-  loading: { textAlign: 'center', marginVertical: 8, color: '#000000' },
+  loading: { textAlign: 'center', marginVertical: 8 },
   list: { marginTop: 16 },
   slot: {
     backgroundColor: '#f0f0f0',
@@ -171,6 +166,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
-  slotText: { fontSize: 16, textAlign: 'center', color: '#000000' },
-  empty: { textAlign: 'center', color: '#999999', marginTop: 20 },
+  slotText: { fontSize: 16, textAlign: 'center' },
+  empty: { textAlign: 'center', color: '#999', marginTop: 20 },
 });
