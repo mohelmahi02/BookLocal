@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://scored-pettiness-reclusive.ngrok-free.dev';
+const API_URL = 'http://booklocal-backend-alb-1738618234.eu-west-1.elb.amazonaws.com';
 
 export default function App() {
   const [email, setEmail] = useState('customer@test.com');
