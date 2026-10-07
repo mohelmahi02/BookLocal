@@ -4,6 +4,10 @@ A booking platform for local businesses (barbers, salons). Customers register, s
 
 Built as an end-to-end cloud project: API, database, infrastructure as code, CI/CD and a mobile client.
 
+## Screenshots
+
+<p align="center"><img src="docs/slots.png" width="240"> <img src="docs/booked.png" width="240"> <img src="docs/my-bookings-cancel.png" width="240"></p>
+
 ## Architecture
 
 ```mermaid
