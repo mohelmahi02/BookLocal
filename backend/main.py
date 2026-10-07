@@ -205,3 +205,8 @@ def cancel_booking(booking_id: int, db: Session = Depends(get_db), current_user:
     booking.status = "cancelled"
     db.commit()
     return {"id": booking.id, "status": booking.status}
+
+
+from owner import router as owner_router, public_router
+app.include_router(owner_router)
+app.include_router(public_router)

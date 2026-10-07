@@ -20,6 +20,8 @@ class Business(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     location = Column(String)
+    category = Column(String, default="other")
+    slug = Column(String, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Service(Base):
