@@ -170,3 +170,38 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/bookings")
+def list_my_bookings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    bookings = (
+        db.query(Booking)
+        .filter(Booking.user_id == current_user.id)
+        .order_by(Booking.start_time)
+        .all()
+    )
+    return [
+        {
+            "id": b.id,
+            "business_id": b.business_id,
+            "service_id": b.service_id,
+            "start_time": b.start_time.isoformat(),
+            "end_time": b.end_time.isoformat(),
+            "status": b.status,
+        }
+        for b in bookings
+    ]
+
+
+@app.delete("/bookings/{booking_id}")
+def cancel_booking(booking_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    booking = db.query(Booking).filter(
+        Booking.id == booking_id,
+        Booking.user_id == current_user.id,
+    ).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    booking.status = "cancelled"
+    db.commit()
+    return {"id": booking.id, "status": booking.status}
