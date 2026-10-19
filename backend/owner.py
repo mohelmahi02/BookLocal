@@ -203,7 +203,7 @@ def owner_bookings(db: Session = Depends(get_db), current_user: User = Depends(g
     business = my_business(db, current_user)
     rows = (
         db.query(Booking, User, Service)
-        .join(User, Booking.user_id == User.id)
+        .outerjoin(User, Booking.user_id == User.id)
         .join(Service, Booking.service_id == Service.id)
         .filter(Booking.business_id == business.id)
         .order_by(Booking.start_time)
@@ -216,8 +216,9 @@ def owner_bookings(db: Session = Depends(get_db), current_user: User = Depends(g
             "end_time": b.end_time,
             "status": b.status,
             "service": s.name,
-            "customer_name": u.name,
-            "customer_email": u.email,
+            "customer_name": u.name if u else b.guest_name,
+            "customer_email": u.email if u else b.guest_email,
+            "customer_phone": b.guest_phone,
         }
         for b, u, s in rows
     ]
@@ -234,3 +235,26 @@ def public_business(slug: str, db: Session = Depends(get_db)):
         "services": [service_dict(s) for s in services],
         "hours": hours_list(db, business.id),
     }
+
+
+@router.put("/services/{service_id}")
+def update_service(
+    service_id: int,
+    data: ServiceIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    business = my_business(db, current_user)
+    service = (
+        db.query(Service)
+        .filter(Service.id == service_id, Service.business_id == business.id)
+        .first()
+    )
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    service.name = data.name
+    service.price = data.price
+    service.duration_minutes = data.duration_minutes
+    db.commit()
+    db.refresh(service)
+    return service_dict(service)

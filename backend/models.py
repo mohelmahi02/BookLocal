@@ -47,10 +47,14 @@ class Booking(Base):
     __tablename__ = "bookings"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # null for guest bookings
     business_id = Column(Integer, ForeignKey("businesses.id"), nullable=False)
     service_id = Column(Integer, ForeignKey("services.id"), nullable=False)
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=False)
     status = Column(String, default="confirmed")  # confirmed, cancelled, completed
+    guest_name = Column(String)
+    guest_email = Column(String)
+    guest_phone = Column(String)
+    cancel_token = Column(String, unique=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
