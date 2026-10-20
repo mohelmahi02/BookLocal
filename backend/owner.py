@@ -258,3 +258,41 @@ def update_service(
     db.commit()
     db.refresh(service)
     return service_dict(service)
+
+
+@router.delete("/bookings/{booking_id}")
+def owner_cancel_booking(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    business = my_business(db, current_user)
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id, Booking.business_id == business.id)
+        .first()
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    booking.status = "cancelled"
+    db.commit()
+    return {"status": "cancelled"}
+
+
+@router.delete("/bookings/{booking_id}")
+def owner_cancel_booking(
+    booking_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    business = my_business(db, current_user)
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id, Booking.business_id == business.id)
+        .first()
+    )
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    booking.status = "cancelled"
+    db.commit()
+    return {"status": "cancelled"}

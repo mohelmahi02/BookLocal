@@ -188,6 +188,25 @@ function BookingsTab({ token }: { token: string }) {
     load();
   }, []);
 
+  const cancelBooking = (b: Booking) => {
+    Alert.alert(
+      'Cancel this booking?',
+      `${b.customer_name} at ${b.start_time.slice(11, 16)} on ${b.start_time.slice(0, 10)}. The time slot becomes free again.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Cancel booking',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await api(`/owner/bookings/${b.id}`, token, { method: 'DELETE' });
+            if (!res.ok) Alert.alert('Could not cancel', errText(res.data));
+            else load();
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <FlatList
       data={bookings}
@@ -212,6 +231,9 @@ function BookingsTab({ token }: { token: string }) {
                 <Text style={styles.cardMeta}>{item.customer_phone}</Text>
               ) : null}
               <Text style={styles.cardMeta}>{item.customer_email}</Text>
+              <TouchableOpacity onPress={() => cancelBooking(item)}>
+                <Text style={[styles.actionText, { color: '#d11a2a', marginTop: 10 }]}>Cancel booking</Text>
+              </TouchableOpacity>
             </View>
           </View>
         );
