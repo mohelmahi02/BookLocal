@@ -10,6 +10,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   ScrollView,
+  Switch,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, errText } from './src/api';
@@ -219,6 +220,222 @@ function BookingsTab({ token }: { token: string }) {
   );
 }
 
+type Service = { id: number; name: string; price: number; duration_minutes: number };
+
+function ServicesTab({ token }: { token: string }) {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [minutes, setMinutes] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const res = await api('/owner/services', token);
+    setLoading(false);
+    if (res.ok) setServices(res.data);
+    else Alert.alert('Error', errText(res.data));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const reset = () => {
+    setName('');
+    setPrice('');
+    setMinutes('');
+    setEditingId(null);
+  };
+
+  const save = async () => {
+    const p = parseFloat(price.replace(',', '.'));
+    const m = parseInt(minutes, 10);
+    if (!name.trim() || isNaN(p) || p < 0 || isNaN(m) || m < 5) {
+      Alert.alert('Check the details', 'Enter a name, a price, and a duration of at least 5 minutes');
+      return;
+    }
+    const body = JSON.stringify({ name: name.trim(), price: p, duration_minutes: m });
+    const res = editingId
+      ? await api(`/owner/services/${editingId}`, token, { method: 'PUT', body })
+      : await api('/owner/services', token, { method: 'POST', body });
+    if (!res.ok) {
+      Alert.alert('Could not save', errText(res.data));
+      return;
+    }
+    reset();
+    load();
+  };
+
+  const edit = (sv: Service) => {
+    setEditingId(sv.id);
+    setName(sv.name);
+    setPrice(String(sv.price));
+    setMinutes(String(sv.duration_minutes));
+  };
+
+  const remove = (sv: Service) => {
+    Alert.alert(`Delete ${sv.name}?`, 'Customers will no longer be able to book it.', [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const res = await api(`/owner/services/${sv.id}`, token, { method: 'DELETE' });
+          if (!res.ok) Alert.alert('Could not delete', errText(res.data));
+          else load();
+        },
+      },
+    ]);
+  };
+
+  const form = (
+    <View style={styles.formBox}>
+      <Text style={styles.label}>{editingId ? 'Edit service' : 'Add a service'}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Name (e.g. Haircut)"
+        placeholderTextColor="#999999"
+        value={name}
+        onChangeText={setName}
+      />
+      <View style={styles.formRow}>
+        <TextInput
+          style={[styles.input, styles.half]}
+          placeholder="Price (EUR)"
+          placeholderTextColor="#999999"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="decimal-pad"
+        />
+        <TextInput
+          style={[styles.input, styles.half]}
+          placeholder="Minutes"
+          placeholderTextColor="#999999"
+          value={minutes}
+          onChangeText={setMinutes}
+          keyboardType="number-pad"
+        />
+      </View>
+      <TouchableOpacity style={styles.primaryButton} onPress={save}>
+        <Text style={styles.primaryButtonText}>{editingId ? 'Save changes' : 'Add service'}</Text>
+      </TouchableOpacity>
+      {editingId ? (
+        <TouchableOpacity onPress={reset}>
+          <Text style={styles.link}>Cancel editing</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <FlatList
+      data={services}
+      keyExtractor={(sv) => String(sv.id)}
+      ListHeaderComponent={form}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+      ListEmptyComponent={
+        !loading ? <Text style={styles.empty}>No services yet. Add your first one above.</Text> : null
+      }
+      renderItem={({ item }) => (
+        <View style={styles.card}>
+          <Text style={styles.cardCustomer}>{item.name}</Text>
+          <Text style={styles.cardMeta}>
+            EUR {item.price.toFixed(2)} · {item.duration_minutes} min
+          </Text>
+          <View style={styles.rowActions}>
+            <TouchableOpacity onPress={() => edit(item)}>
+              <Text style={styles.actionText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => remove(item)}>
+              <Text style={[styles.actionText, { color: '#d11a2a' }]}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    />
+  );
+}
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+type DayState = { open: boolean; from: string; to: string };
+const defaultDays = (): DayState[] =>
+  DAYS.map((_, i) => ({ open: i < 5, from: '09:00', to: '17:00' }));
+
+function HoursTab({ token }: { token: string }) {
+  const [days, setDays] = useState<DayState[]>(defaultDays());
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await api('/owner/hours', token);
+      if (res.ok && res.data.length > 0) {
+        const next: DayState[] = DAYS.map(() => ({ open: false, from: '09:00', to: '17:00' }));
+        res.data.forEach((h: any) => {
+          next[h.day_of_week] = { open: true, from: h.opening_time, to: h.closing_time };
+        });
+        setDays(next);
+      }
+    })();
+  }, []);
+
+  const update = (i: number, patch: Partial<DayState>) =>
+    setDays(days.map((d, idx) => (idx === i ? { ...d, ...patch } : d)));
+
+  const save = async () => {
+    const re = /^([01]\d|2[0-3]):[0-5]\d$/;
+    const payload: any[] = [];
+    for (let i = 0; i < days.length; i++) {
+      const d = days[i];
+      if (!d.open) continue;
+      if (!re.test(d.from) || !re.test(d.to) || d.from >= d.to) {
+        Alert.alert(`Check ${DAYS[i]}`, 'Use 24-hour times like 09:00 and 17:30, with opening before closing');
+        return;
+      }
+      payload.push({ day_of_week: i, opening_time: d.from, closing_time: d.to });
+    }
+    setSaving(true);
+    const res = await api('/owner/hours', token, { method: 'PUT', body: JSON.stringify(payload) });
+    setSaving(false);
+    if (res.ok) Alert.alert('Saved', 'Your opening hours are updated');
+    else Alert.alert('Could not save', errText(res.data));
+  };
+
+  return (
+    <ScrollView>
+      {days.map((d, i) => (
+        <View key={DAYS[i]} style={styles.dayRow}>
+          <Text style={styles.dayName}>{DAYS[i]}</Text>
+          <Switch value={d.open} onValueChange={(v) => update(i, { open: v })} />
+          {d.open ? (
+            <View style={styles.timeBox}>
+              <TextInput
+                style={styles.timeInput}
+                value={d.from}
+                onChangeText={(t) => update(i, { from: t })}
+                maxLength={5}
+              />
+              <Text style={styles.dash}>–</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={d.to}
+                onChangeText={(t) => update(i, { to: t })}
+                maxLength={5}
+              />
+            </View>
+          ) : (
+            <Text style={styles.closed}>Closed</Text>
+          )}
+        </View>
+      ))}
+      <TouchableOpacity style={[styles.primaryButton, { marginTop: 16 }]} onPress={save} disabled={saving}>
+        <Text style={styles.primaryButtonText}>{saving ? 'Saving...' : 'Save opening hours'}</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
 function Home({ token, business, onLogout }: { token: string; business: any; onLogout: () => void }) {
   const [tab, setTab] = useState<'bookings' | 'services' | 'hours'>('bookings');
   const tabs: Array<['bookings' | 'services' | 'hours', string]> = [
@@ -244,8 +461,8 @@ function Home({ token, business, onLogout }: { token: string; business: any; onL
       </View>
       <View style={styles.body}>
         {tab === 'bookings' && <BookingsTab token={token} />}
-        {tab === 'services' && <Text style={styles.empty}>Services: coming next</Text>}
-        {tab === 'hours' && <Text style={styles.empty}>Opening hours: coming next</Text>}
+        {tab === 'services' && <ServicesTab token={token} />}
+        {tab === 'hours' && <HoursTab token={token} />}
       </View>
       <TouchableOpacity onPress={onLogout}>
         <Text style={styles.logout}>Log out</Text>
@@ -367,4 +584,30 @@ const styles = StyleSheet.create({
   cardCustomer: { fontSize: 16, color: '#000000', marginTop: 6 },
   cardMeta: { fontSize: 14, color: '#555555', marginTop: 2 },
   logout: { textAlign: 'center', color: '#888888', paddingVertical: 12 },
+  formBox: { marginBottom: 12 },
+  formRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  half: { width: '48%' },
+  rowActions: { flexDirection: 'row', marginTop: 10 },
+  actionText: { color: '#007aff', fontSize: 15, fontWeight: 'bold', marginRight: 24 },
+  dayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eeeeee',
+  },
+  dayName: { width: 100, fontSize: 16, color: '#000000' },
+  timeBox: { flexDirection: 'row', alignItems: 'center', marginLeft: 12 },
+  timeInput: {
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    width: 64,
+    textAlign: 'center',
+    color: '#000000',
+  },
+  dash: { marginHorizontal: 6, color: '#555555' },
+  closed: { marginLeft: 12, color: '#999999' },
 });
