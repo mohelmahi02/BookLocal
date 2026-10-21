@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, errText } from './src/api';
+import CustomerBooking from './src/CustomerBooking';
 
 const TOKEN_KEY = 'owner_token';
 const CATEGORIES = ['Barber', 'Salon', 'Coach', 'Other'];
@@ -29,12 +30,19 @@ type Booking = {
   customer_phone: string | null;
 };
 
-function AuthScreen({ onToken }: { onToken: (t: string) => void }) {
+function AuthScreen({
+  onToken,
+  onCustomer,
+}: {
+  onToken: (t: string) => void;
+  onCustomer: (slug: string) => void;
+}) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
 
   const submit = async () => {
     setBusy(true);
@@ -96,6 +104,24 @@ function AuthScreen({ onToken }: { onToken: (t: string) => void }) {
           {mode === 'login' ? 'New here? Create an account' : 'Already have an account? Log in'}
         </Text>
       </TouchableOpacity>
+      <View style={styles.divider} />
+      <Text style={styles.label}>Booking with a business?</Text>
+      <View style={styles.formRow}>
+        <TextInput
+          style={[styles.input, { width: '68%' }]}
+          placeholder="Business code"
+          placeholderTextColor="#999999"
+          value={code}
+          onChangeText={setCode}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.primaryButton, { width: '28%', marginTop: 0, justifyContent: 'center' }]}
+          onPress={() => code.trim() && onCustomer(code.trim().toLowerCase())}
+        >
+          <Text style={styles.primaryButtonText}>Go</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -498,6 +524,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [business, setBusiness] = useState<any>(null);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [customerSlug, setCustomerSlug] = useState<string | null>(null);
 
   const enter = async (t: string) => {
     const res = await api('/owner/business', t);
@@ -541,7 +568,10 @@ export default function App() {
       </View>
     );
   }
-  if (!token) return <AuthScreen onToken={enter} />;
+  if (customerSlug) {
+    return <CustomerBooking slug={customerSlug} onBack={() => setCustomerSlug(null)} />;
+  }
+  if (!token) return <AuthScreen onToken={enter} onCustomer={setCustomerSlug} />;
   if (needsSetup || !business) {
     return (
       <SetupScreen
@@ -632,4 +662,5 @@ const styles = StyleSheet.create({
   },
   dash: { marginHorizontal: 6, color: '#555555' },
   closed: { marginLeft: 12, color: '#999999' },
+  divider: { height: 1, backgroundColor: '#eeeeee', marginVertical: 20 },
 });
