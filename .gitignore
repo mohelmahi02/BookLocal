@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 infrastructure/terraform.tfvars
 infrastructure/.terraform/
 infrastructure/*.tfstate*
+awscliv2.zip
