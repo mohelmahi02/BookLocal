@@ -2,13 +2,14 @@ import re
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from bookings_core import create_booking_record
 from database import get_db
-from models import Booking, Business
+from emails import customer_confirmation, owner_notification, send_email
+from models import Booking, Business, Service, User
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -24,7 +25,12 @@ class GuestBookingIn(BaseModel):
 
 
 @router.post("/businesses/{slug}/bookings", status_code=201)
-def guest_book(slug: str, data: GuestBookingIn, db: Session = Depends(get_db)):
+def guest_book(
+    slug: str,
+    data: GuestBookingIn,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     business = db.query(Business).filter(Business.slug == slug).first()
     if not business:
         raise HTTPException(status_code=404, detail="Business not found")
@@ -40,6 +46,22 @@ def guest_book(slug: str, data: GuestBookingIn, db: Session = Depends(get_db)):
         guest_email=data.email.strip().lower(),
         guest_phone=data.phone.strip() if data.phone else None,
     )
+    service = db.get(Service, booking.service_id)
+    owner = db.get(User, business.owner_id)
+    subject, body = customer_confirmation(
+        business.name, service.name, booking.start_time, business.location
+    )
+    background_tasks.add_task(send_email, booking.guest_email, subject, body)
+    if owner:
+        subject, body = owner_notification(
+            business.name,
+            service.name,
+            booking.start_time,
+            booking.guest_name,
+            booking.guest_email,
+            booking.guest_phone,
+        )
+        background_tasks.add_task(send_email, owner.email, subject, body)
     return {
         "id": booking.id,
         "start_time": booking.start_time.isoformat(),
