@@ -72,10 +72,13 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         Resource = "*"
       },
       {
-        Sid      = "PassExecutionRole"
+        Sid      = "PassTaskRoles"
         Effect   = "Allow"
         Action   = "iam:PassRole"
-        Resource = "arn:aws:iam::325774504679:role/ecsTaskExecutionRole"
+        Resource = [
+          "arn:aws:iam::325774504679:role/ecsTaskExecutionRole",
+          aws_iam_role.ecs_task.arn
+        ]
       }
     ]
   })
